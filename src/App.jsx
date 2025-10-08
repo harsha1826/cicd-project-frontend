@@ -91,6 +91,8 @@ const App = () => {
             element={<Login onLogin={() => setIsAuthenticated(true)} />}
           />
           <Route path="/signup" element={<SignUp />} />
+          <Route path="/AdminLogin" element={<AdminLogin />} />
+          <Route path="/AdminSignup" element={<AdminSignup />} />
 
           {/* Protected Routes */}
           <Route
@@ -149,7 +151,7 @@ const App = () => {
               </PrivateRoute>
             }
           />
-          <Route
+          {/* <Route
             path="/AdminLogin"
             element={
               <PrivateRoute isAuthenticated={isAuthenticated}>
@@ -164,7 +166,7 @@ const App = () => {
                 <AdminSignup />
               </PrivateRoute>
             }
-          />
+          /> */}
           <Route
             path="/Admin"
             element={

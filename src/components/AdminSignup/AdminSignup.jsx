@@ -1,351 +1,266 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import 'aos/dist/aos.css';
-import AOS from 'aos';
-import axios from 'axios';
-import CarPng from "../../assets/images/LoginLambo.png";
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
-const AdminSignup = () => {
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    adminCode: '',
-    confirmAdminCode: ''
-  });
-  const [passwordStrength, setPasswordStrength] = useState('');
-  const [errorMessage, setErrorMessage] = useState('');
-  const [showAdminCode, setShowAdminCode] = useState(false);
-  const [showConfirmAdminCode, setShowConfirmAdminCode] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+const Login = ({ onLogin }) => {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [otp, setOtp] = useState("");
+  const [isOtpLogin, setIsOtpLogin] = useState(false);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    AOS.init({ duration: 1000 });
-  }, []);
-
-  const validatePasswordStrength = (password) => {
-    let strength = "Weak";
-    if (password.length >= 8 && /[A-Z]/.test(password) && /[0-9]/.test(password) && /[^A-Za-z0-9]/.test(password)) {
-      strength = "Strong";
-    } else if (password.length >= 6 && (/[A-Z]/.test(password) || /[0-9]/.test(password))) {
-      strength = "Moderate";
-    }
-    setPasswordStrength(strength);
-  };
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-
-    if (name === 'password') {
-      validatePasswordStrength(value);
-    }
-
-    // Clear error when typing
-    if (errorMessage) setErrorMessage('');
-  };
-
-  const validateAdminCode = (code) => {
-    return code === '121289';
-  };
-
-  const handleSubmit = async (e) => {
+  // 🔹 Handle normal login
+  const handlePasswordLogin = async (e) => {
     e.preventDefault();
-    setIsSubmitting(true);
-    setErrorMessage('');
-
-    // Validate all fields
-    if (!formData.name || !formData.email || !formData.password || 
-        !formData.confirmPassword || !formData.adminCode || !formData.confirmAdminCode) {
-      setErrorMessage('Please fill in all fields.');
-      setIsSubmitting(false);
-      return;
-    }
-
-    if (formData.password !== formData.confirmPassword) {
-      setErrorMessage('Passwords do not match.');
-      setIsSubmitting(false);
-      return;
-    }
-
-    if (formData.adminCode !== formData.confirmAdminCode) {
-      setErrorMessage('Admin codes do not match.');
-      setIsSubmitting(false);
-      return;
-    }
-
-    // Strict validation for admin code
-    if (!validateAdminCode(formData.adminCode)) {
-      setErrorMessage('Invalid Admin Code. Please enter the correct admin code.');
-      setIsSubmitting(false);
-      return;
-    }
-
-    if (passwordStrength === "Weak") {
-      setErrorMessage('Password is too weak. Please choose a stronger password.');
-      setIsSubmitting(false);
-      return;
-    }
-
     try {
-      const response = await axios.post(
-        'http://localhost:1234/api/auth/admin/signup',
-        {
-          name: formData.name,
-          email: formData.email,
-          password: formData.password,
-          adminCode: formData.adminCode
-        },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Admin-Code-Verified': 'true'
-          }
-        }
-      );
+      const res = await fetch("http://localhost:1234/api/auth/admin/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
 
-      if (response.status === 200) {
-        alert('Admin account created successfully!');
-        navigate('/admin/login');
+      const text = await res.text();
+      if (res.ok) {
+        localStorage.setItem("isLoggedIn", "true");
+        localStorage.setItem("user", JSON.stringify({ email })); // minimal user info
+        if (onLogin) onLogin();
+        navigate("/home");
+      } else {
+        alert(text || "Login failed");
       }
-    } catch (error) {
-      setErrorMessage(error.response?.data?.message || 'Admin signup failed. Please try again.');
-    } finally {
-      setIsSubmitting(false);
+    } catch (err) {
+      console.error("Login error:", err);
+      alert("Server error. Try again later.");
     }
+  };
+
+  // 🔹 Handle OTP login
+  const handleOtpLogin = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await fetch("http://localhost:1234/api/auth/verify-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, otp }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        localStorage.setItem("isLoggedIn", "true");
+        localStorage.setItem("user", JSON.stringify(data.user));
+        if (onLogin) onLogin();
+        navigate("/home");
+      } else {
+        alert(data.message || "OTP login failed");
+      }
+    } catch (err) {
+      console.error("OTP Login error:", err);
+      alert("Server error. Try again later.");
+    }
+  };
+
+  // 🔹 Request OTP
+  const requestOtp = async () => {
+    try {
+      const res = await fetch("http://localhost:1234/api/auth/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      alert(data.message || "OTP sent to your email!");
+    } catch (err) {
+      console.error("OTP request error:", err);
+      alert("Error sending OTP.");
+    }
+  };
+
+  // 🔹 Inline Styles
+  const styles = {
+    container: {
+      display: "flex",
+      justifyContent: "center",
+      alignItems: "center",
+      minHeight: "100vh",
+      backgroundImage:
+        "url('https://images.unsplash.com/photo-1502877338535-766e1452684a?auto=format&fit=crop&w=1600&q=80')",
+      backgroundSize: "cover",
+      backgroundPosition: "center",
+    },
+    form: {
+      backgroundColor: "rgba(255,255,255,0.95)",
+      padding: "40px 30px",
+      borderRadius: "15px",
+      boxShadow: "0 8px 30px rgba(0, 0, 0, 0.2)",
+      width: "380px",
+      textAlign: "center",
+      backdropFilter: "blur(5px)",
+    },
+    heading: {
+      marginBottom: "20px",
+      color: "#222",
+      fontSize: "26px",
+      fontWeight: "bold",
+    },
+    input: {
+      width: "100%",
+      padding: "12px 15px",
+      margin: "10px 0",
+      border: "1px solid #ccc",
+      borderRadius: "8px",
+      fontSize: "16px",
+      outline: "none",
+    },
+    button: {
+      width: "100%",
+      padding: "12px",
+      marginTop: "15px",
+      border: "none",
+      borderRadius: "8px",
+      backgroundImage:
+        "url('https://cdn-icons-png.flaticon.com/512/743/743131.png')",
+      backgroundColor: "#007bff",
+      backgroundRepeat: "no-repeat",
+      backgroundPosition: "12px center",
+      backgroundSize: "24px",
+      color: "white",
+      fontSize: "16px",
+      cursor: "pointer",
+      transition: "0.3s",
+      paddingLeft: "45px",
+    },
+    toggleBtn: {
+      background: "none",
+      border: "none",
+      color: "#007bff",
+      cursor: "pointer",
+      marginTop: "10px",
+      textDecoration: "underline",
+    },
+    signupBtn: {
+      marginTop: "10px",
+      backgroundColor: "#28a745",
+      color: "white",
+      padding: "10px 15px",
+      borderRadius: "8px",
+      cursor: "pointer",
+      fontSize: "14px",
+      textDecoration: "none",
+    },
   };
 
   return (
-    <div className="dark:bg-dark bg-slate-100 sm:min-h-[600px] sm:grid sm:place-items-center duration-300">
-      <div className="container">
-        <div className="grid grid-cols-1 sm:grid-cols-2 place-items-center">
-          {/* Left side: Car Image */}
-          <div data-aos="slide-right" data-aos-duration="1500">
-            <img
-              src={CarPng}
-              alt="Car"
-              className="sm:scale-125 sm:-translate-x-11 max-h-[300px] drop-shadow-[2px_10px_6px_rgba(0,0,0,0.50)]"
+    <div style={styles.container}>
+      <form
+        style={styles.form}
+        onSubmit={isOtpLogin ? handleOtpLogin : handlePasswordLogin}
+      >
+        <h2 style={styles.heading}>
+          {isOtpLogin ? "Login with OTP" : "Login with Password"}
+        </h2>
+
+        {/* Email input */}
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="Email"
+          required
+          style={styles.input}
+        />
+
+        {/* Password or OTP field */}
+        {!isOtpLogin ? (
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Password"
+            required
+            style={styles.input}
+          />
+        ) : (
+          <>
+            <input
+              type="text"
+              value={otp}
+              onChange={(e) => setOtp(e.target.value)}
+              placeholder="Enter OTP"
+              required
+              style={styles.input}
             />
-          </div>
+            <button
+              type="button"
+              onClick={requestOtp}
+              style={{
+                ...styles.button,
+                backgroundColor: "#ffc107",
+                color: "#000",
+                backgroundImage: "none",
+                paddingLeft: "12px",
+              }}
+            >
+              Send OTP
+            </button>
+          </>
+        )}
 
-          {/* Right side: Admin SignUp Form */}
-          <div>
-            <div className="space-y-5 sm:p-16 pb-6">
-              <h1 data-aos="fade-up" className="text-3xl sm:text-4xl font-bold font-serif">
-                Admin Sign Up
-              </h1>
-              <p className="text-sm text-gray-600">Restricted access - Admin code required</p>
+        {/* Submit button */}
+        <button
+          type="submit"
+          style={styles.button}
+          onMouseOver={(e) => (e.target.style.backgroundColor = "#0056b3")}
+          onMouseOut={(e) => (e.target.style.backgroundColor = "#007bff")}
+        >
+          {isOtpLogin ? "Login with OTP" : "Login"}
+        </button>
 
-              <form data-aos="fade-up" onSubmit={handleSubmit} className="space-y-4">
-                {/* Name Input */}
-                <div>
-                  <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                    Full Name
-                  </label>
-                  <input
-                    type="text"
-                    id="name"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                    placeholder="Enter your full name"
-                    required
-                  />
-                </div>
+        {/* Toggle login mode */}
+        <button
+          type="button"
+          style={styles.toggleBtn}
+          onClick={() => setIsOtpLogin(!isOtpLogin)}
+        >
+          {isOtpLogin ? "Login with Password instead" : "Login with OTP instead"}
+        </button>
 
-                {/* Email Input */}
-                <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    id="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                    placeholder="Enter your email"
-                    required
-                  />
-                </div>
+        {/* Signup & Admin navigation (side by side) */}
+        <div
+          style={{
+            marginTop: "20px",
+            display: "flex",
+            justifyContent: "center",
+            gap: "10px",
+            flexWrap: "wrap", // ensures responsive wrapping
+          }}
+        >
+          <button
+            type="button"
+            style={{ ...styles.signupBtn, backgroundColor: "#28a745" }}
+            onClick={() => navigate("/SignUp")}
+          >
+            User Sign Up
+          </button>
 
-                {/* Password Input */}
-                <div className="relative">
-                  <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                    Password
-                  </label>
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    id="password"
-                    name="password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                    placeholder="Enter your password"
-                    required
-                  />
-                  <button
-                    type="button"
-                    className="absolute right-3 top-8 text-gray-500 hover:text-gray-700"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? (
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                      </svg>
-                    ) : (
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                      </svg>
-                    )}
-                  </button>
-                  <p className={`text-sm ${passwordStrength === 'Strong' ? 'text-green-500' : passwordStrength === 'Moderate' ? 'text-orange-500' : 'text-red-500'}`}>
-                    {passwordStrength} Password
-                  </p>
-                </div>
+          <button
+            type="button"
+            style={{ ...styles.signupBtn, backgroundColor: "#17a2b8" }}
+            onClick={() => navigate("/AdminLogin")}
+          >
+            Admin Login
+          </button>
 
-                {/* Confirm Password Input */}
-                <div className="relative">
-                  <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
-                    Re-enter Password
-                  </label>
-                  <input
-                    type={showConfirmPassword ? "text" : "password"}
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    value={formData.confirmPassword}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                    placeholder="Re-enter your password"
-                    required
-                  />
-                  <button
-                    type="button"
-                    className="absolute right-3 top-8 text-gray-500 hover:text-gray-700"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  >
-                    {showConfirmPassword ? (
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                      </svg>
-                    ) : (
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                      </svg>
-                    )}
-                  </button>
-                </div>
-
-                {/* Admin Code Input */}
-                <div className="relative">
-                  <label htmlFor="adminCode" className="block text-sm font-medium text-gray-700">
-                    Admin Code
-                  </label>
-                  <input
-                    type={showAdminCode ? "text" : "password"}
-                    id="adminCode"
-                    name="adminCode"
-                    value={formData.adminCode}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                    placeholder="Enter admin code ()"
-                    required
-                  />
-                  <button
-                    type="button"
-                    className="absolute right-3 top-8 text-gray-500 hover:text-gray-700"
-                    onClick={() => setShowAdminCode(!showAdminCode)}
-                  >
-                    {showAdminCode ? (
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                      </svg>
-                    ) : (
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                      </svg>
-                    )}
-                  </button>
-                </div>
-
-                {/* Confirm Admin Code Input */}
-                <div className="relative">
-                  <label htmlFor="confirmAdminCode" className="block text-sm font-medium text-gray-700">
-                    Re-enter Admin Code
-                  </label>
-                  <input
-                    type={showConfirmAdminCode ? "text" : "password"}
-                    id="confirmAdminCode"
-                    name="confirmAdminCode"
-                    value={formData.confirmAdminCode}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                    placeholder="Re-enter admin code"
-                    required
-                  />
-                  <button
-                    type="button"
-                    className="absolute right-3 top-8 text-gray-500 hover:text-gray-700"
-                    onClick={() => setShowConfirmAdminCode(!showConfirmAdminCode)}
-                  >
-                    {showConfirmAdminCode ? (
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                      </svg>
-                    ) : (
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                      </svg>
-                    )}
-                  </button>
-                </div>
-
-                {/* Submit Button */}
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className={`bg-yellow-500 text-black px-6 py-3 rounded-md font-medium hover:bg-yellow-400 hover:scale-105 transition-transform duration-300 w-full ${
-                    isSubmitting ? 'opacity-70 cursor-not-allowed' : ''
-                  }`}
-                >
-                  {isSubmitting ? 'Creating Account...' : 'Create Admin Account'}
-                </button>
-              </form>
-
-              {errorMessage && (
-                <div className="text-red-500 text-sm text-center p-2 bg-red-50 rounded-md">
-                  {errorMessage}
-                </div>
-              )}
-
-              <p data-aos="fade-up" className="text-sm text-gray-600 text-center">
-                Already have an admin account?{' '}
-                <span
-                  onClick={() => navigate('/admin/login')}
-                  className="text-yellow-500 cursor-pointer hover:underline"
-                >
-                  Admin Login
-                </span>
-              </p>
-            </div>
-          </div>
+          <button
+            type="button"
+            style={{ ...styles.signupBtn, backgroundColor: "#6f42c1" }}
+            onClick={() => navigate("/AdminSignup")}
+          >
+            Admin Signup
+          </button>
         </div>
-      </div>
+      </form>
     </div>
   );
 };
 
-export default AdminSignup;
+export default Login;

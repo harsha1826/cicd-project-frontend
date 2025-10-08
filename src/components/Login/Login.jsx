@@ -19,14 +19,14 @@ const Login = ({ onLogin }) => {
       });
 
       const text = await res.text();
-if (res.ok) {
-  localStorage.setItem("isLoggedIn", "true");
-  localStorage.setItem("user", JSON.stringify({ email })); // minimal user info
-  if (onLogin) onLogin();
-  navigate("/home");
-} else {
-  alert(text || "Login failed");
-}
+      if (res.ok) {
+        localStorage.setItem("isLoggedIn", "true");
+        localStorage.setItem("user", JSON.stringify({ email })); // minimal user info
+        if (onLogin) onLogin();
+        navigate("/home");
+      } else {
+        alert(text || "Login failed");
+      }
     } catch (err) {
       console.error("Login error:", err);
       alert("Server error. Try again later.");
@@ -138,8 +138,9 @@ if (res.ok) {
       textDecoration: "underline",
     },
     signupBtn: {
-      marginTop: "20px",
-      display: "inline-block",
+      marginTop: "10px",
+      display: "block",
+      width: "100%",
       backgroundColor: "#28a745",
       color: "white",
       padding: "10px 20px",
@@ -225,14 +226,30 @@ if (res.ok) {
           {isOtpLogin ? "Login with Password instead" : "Login with OTP instead"}
         </button>
 
-        {/* Signup navigation */}
-        <div>
+        {/* Signup & Admin navigation */}
+        <div style={{ marginTop: "20px" }}>
           <button
             type="button"
             style={styles.signupBtn}
             onClick={() => navigate("/SignUp")}
           >
             New user? Sign Up
+          </button>
+
+          <button
+            type="button"
+            style={{ ...styles.signupBtn, backgroundColor: "#17a2b8" }}
+            onClick={() => navigate("/AdminLogin")}
+          >
+            Admin Login
+          </button>
+
+          <button
+            type="button"
+            style={{ ...styles.signupBtn, backgroundColor: "#6f42c1" }}
+            onClick={() => navigate("/AdminSignup")}
+          >
+            Admin Signup
           </button>
         </div>
       </form>
